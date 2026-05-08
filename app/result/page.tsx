@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { generateShareUrl } from '@/lib/share';
 
 interface ResultData {
   primary: string;
@@ -11,20 +12,72 @@ interface ResultData {
   shadow: string;
 }
 
-export default function ResultPage() {
+function ResultContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(true);
   const [result, setResult] = useState<ResultData | null>(null);
   const [report, setReport] = useState<string>('');
   const [copied, setCopied] = useState(false);
+  const [isSharedResult, setIsSharedResult] = useState(false);
 
   useEffect(() => {
     const fetchResult = async () => {
+      // Check for shared result in URL first
+      const sharedResult = searchParams.get('r');
+
+      if (sharedResult) {
+        try {
+          const decoded = decodeSharedResult(sharedResult);
+          if (decoded) {
+            setResult(decoded);
+            setIsSharedResult(true);
+
+            const reportRes = await fetch('/api/shared-result', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(decoded),
+            });
+            const reportData = await reportRes.json();
+            setReport(reportData.finalReport);
+            setIsLoading(false);
+            return;
+          }
+        } catch (e) {
+          console.error('Failed to decode shared result:', e);
+        }
+      }
+
+      // Try to load result directly from localStorage (saved after taking test)
+      let savedResult = null;
+      try {
+        const savedResultStr = localStorage.getItem('testResult');
+        if (savedResultStr) {
+          savedResult = JSON.parse(savedResultStr);
+        }
+      } catch (e) {
+        // localStorage not available
+      }
+
+      if (savedResult) {
+        setResult(savedResult);
+        const reportRes = await fetch('/api/report', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ result: savedResult }),
+        });
+        const reportData = await reportRes.json();
+        setReport(reportData.finalReport);
+        setIsLoading(false);
+        return;
+      }
+
+      // Fall back to calculating from answers
       let answers = null;
       try {
         answers = localStorage.getItem('testAnswers');
       } catch (e) {
-        // localStorage not available in private mode
+        // localStorage not available
       }
 
       if (!answers) {
@@ -58,14 +111,16 @@ export default function ResultPage() {
     };
 
     fetchResult();
-  }, [router]);
+  }, [router, searchParams]);
 
-  const handleShare = () => {
-    const shareUrl = window.location.href;
+  const handleShare = useCallback(() => {
+    if (!result) return;
+
+    const shareUrl = generateShareUrl(result);
     navigator.clipboard.writeText(shareUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-  };
+  }, [result]);
 
   const handleRestart = () => {
     try {
@@ -81,9 +136,10 @@ export default function ResultPage() {
       <div className="min-h-screen ink-texture flex items-center justify-center">
         <div className="text-center">
           <div className="mb-6 text-6xl">🔮</div>
-          <h2 className="text-2xl text-cream mb-2">正在解读您的职场基因</h2>
+          <h2 className="text-2xl text-cream mb-2">
+            {isSharedResult ? '正在加载分享的报告' : '正在解读您的职场基因'}
+          </h2>
           <p className="text-gold text-sm">大数据分析中，请稍候</p>
-          {/* Loading dots */}
           <div className="flex justify-center gap-2 mt-6">
             <div className="w-2 h-2 bg-gold rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
             <div className="w-2 h-2 bg-gold rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
@@ -122,11 +178,16 @@ export default function ResultPage() {
       <div className="max-w-4xl mx-auto relative">
         {/* Header */}
         <div className="text-center mb-10">
-          <p className="text-gold text-sm tracking-widest mb-2">YOUR CAREER PERSONALITY</p>
+          <p className="text-gold text-sm tracking-widest mb-2">
+            {isSharedResult ? 'SHARED RESULT' : 'YOUR CAREER PERSONALITY'}
+          </p>
           <h1 className="text-3xl md:text-4xl font-bold text-cream mb-2">
-            你在职场中的「真身」
+            {isSharedResult ? '朋友分享的职场人格' : '你在职场中的「真身」'}
           </h1>
           <p className="text-cream/50 text-sm">中国历史人物 · 职场二十四型</p>
+          {isSharedResult && (
+            <p className="text-gold/60 text-xs mt-2">这是朋友测试后分享给你的结果</p>
+          )}
         </div>
 
         {/* Personality Cards */}
@@ -193,7 +254,7 @@ export default function ResultPage() {
             onClick={handleRestart}
             className="flex-1 bg-gradient-to-r from-gold to-gold-light text-ink-black py-4 px-8 rounded-xl font-medium text-lg hover:opacity-90 transition-all"
           >
-            🔄 再测一次
+            🔄 我也要测试
           </button>
         </div>
 
@@ -205,5 +266,43 @@ export default function ResultPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Decode shared result from base64url
+function decodeSharedResult(encoded: string): ResultData | null {
+  try {
+    let base64 = encoded.replace(/-/g, '+').replace(/_/g, '/');
+    while (base64.length % 4) {
+      base64 += '=';
+    }
+    const json = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    const parsed = JSON.parse(json);
+    if (parsed.primary && parsed.secondary && parsed.shadow) {
+      return parsed;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+// Wrapper component with Suspense for useSearchParams
+export default function ResultPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen ink-texture flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-gold text-lg">加载中...</div>
+        </div>
+      </div>
+    }>
+      <ResultContent />
+    </Suspense>
   );
 }

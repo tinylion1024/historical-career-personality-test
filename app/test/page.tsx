@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { questions } from '@/data/questions';
+import { characters } from '@/data/characters';
+import { calculateResult } from '@/lib/calculate';
 
 export default function TestPage() {
   const router = useRouter();
@@ -34,8 +36,12 @@ export default function TestPage() {
         setIsTransitioning(false);
       }, 300);
     } else {
+      // Calculate result
+      const result = calculateResult(newAnswers);
+
       try {
         localStorage.setItem('testAnswers', JSON.stringify(newAnswers));
+        localStorage.setItem('testResult', JSON.stringify(result.result));
       } catch (e) {
         // localStorage might not be available in private mode
       }
