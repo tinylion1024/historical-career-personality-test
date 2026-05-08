@@ -41,7 +41,12 @@ export default function TestPage() {
 
       try {
         localStorage.setItem('testAnswers', JSON.stringify(newAnswers));
-        localStorage.setItem('testResult', JSON.stringify(result.result));
+        // Save only the names as strings for sharing
+        localStorage.setItem('testResult', JSON.stringify({
+          primary: result.result.primary.name,
+          secondary: result.result.secondary.name,
+          shadow: result.result.shadow.name,
+        }));
       } catch (e) {
         // localStorage might not be available in private mode
       }
