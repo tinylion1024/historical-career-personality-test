@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { questions } from '@/data/questions';
 
@@ -10,14 +10,17 @@ export default function TestPage() {
   const [answers, setAnswers] = useState<number[]>([]);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [isClient, setIsClient] = useState(false);
 
-  const progress = ((currentQuestion + 1) / questions.length) * 100;
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
-  const handleOptionSelect = (optionIndex: number) => {
+  const handleOptionSelect = useCallback((optionIndex: number) => {
     setSelectedOption(optionIndex);
-  };
+  }, []);
 
-  const handleNext = () => {
+  const handleNext = useCallback(() => {
     if (selectedOption === null) return;
 
     const newAnswers = [...answers, selectedOption];
@@ -27,67 +30,115 @@ export default function TestPage() {
     if (currentQuestion < questions.length - 1) {
       setIsTransitioning(true);
       setTimeout(() => {
-        setCurrentQuestion(currentQuestion + 1);
+        setCurrentQuestion(prev => prev + 1);
         setIsTransitioning(false);
       }, 300);
     } else {
-      // Save answers to localStorage and navigate to result
-      localStorage.setItem('testAnswers', JSON.stringify(newAnswers));
+      try {
+        localStorage.setItem('testAnswers', JSON.stringify(newAnswers));
+      } catch (e) {
+        // localStorage might not be available in private mode
+      }
       router.push('/result');
     }
-  };
+  }, [selectedOption, answers, currentQuestion, router]);
+
+  if (!isClient) {
+    // SSR fallback - show loading state
+    return (
+      <div className="min-h-screen ink-texture flex items-center justify-center p-4">
+        <div className="text-center">
+          <div className="text-gold text-lg">加载中...</div>
+        </div>
+      </div>
+    );
+  }
 
   const question = questions[currentQuestion];
+  const progress = ((currentQuestion + 1) / questions.length) * 100;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center p-4">
-      <div className="max-w-2xl w-full">
-        {/* Progress Bar */}
+    <div className="min-h-screen ink-texture flex items-center justify-center p-4">
+      {/* 背景光晕 */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-gold/5 rounded-full blur-3xl" />
+      </div>
+
+      <div className="max-w-2xl w-full relative">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="calligraphy text-gold text-sm tracking-widest mb-2">职场人格测试</h1>
+          <p className="text-cream/50 text-xs">中国历史人物 · 二十四型</p>
+        </div>
+
+        {/* Progress */}
         <div className="mb-8">
-          <div className="flex justify-between text-white text-sm mb-2">
-            <span>问题 {currentQuestion + 1} / {questions.length}</span>
+          <div className="flex justify-between text-cream/70 text-sm mb-3">
+            <span className="flex items-center gap-2">
+              <span className="text-gold">第</span>
+              <span className="text-gold font-medium">{currentQuestion + 1}</span>
+              <span className="text-gold">题</span>
+            </span>
             <span>{Math.round(progress)}%</span>
           </div>
-          <div className="w-full bg-slate-700 rounded-full h-3">
+          <div className="h-1 bg-ink-slate rounded-full overflow-hidden">
             <div
-              className="bg-gradient-to-r from-amber-400 to-orange-500 h-3 rounded-full transition-all duration-500"
+              className="h-full bg-gradient-to-r from-gold to-gold-light rounded-full transition-all duration-500 ease-out"
               style={{ width: `${progress}%` }}
             />
+          </div>
+          {/* 进度指示点 */}
+          <div className="flex justify-center gap-1.5 mt-4">
+            {questions.slice(0, 12).map((_, index) => (
+              <div
+                key={index}
+                className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
+                  index === currentQuestion
+                    ? 'bg-gold w-4'
+                    : index < currentQuestion
+                    ? 'bg-gold/50'
+                    : 'bg-ink-slate'
+                }`}
+              />
+            ))}
+            <span className="text-cream/30 text-xs mx-2">...</span>
           </div>
         </div>
 
         {/* Question Card */}
         <div
-          className={`bg-white rounded-3xl shadow-2xl p-8 transition-all duration-300 ${
+          className={`bg-ink-dark/90 backdrop-blur-sm rounded-3xl p-8 md:p-10 ink-border gold-glow transition-all duration-300 ${
             isTransitioning ? 'opacity-0 transform scale-95' : 'opacity-100 transform scale-100'
           }`}
         >
-          <h2 className="text-xl md:text-2xl font-semibold text-gray-800 mb-8 text-center">
+          <h2 className="text-xl md:text-2xl text-cream leading-relaxed mb-8 text-center">
             {question.title}
           </h2>
 
-          <div className="space-y-4">
+          <div className="space-y-3">
             {question.options.map((option, index) => (
               <button
                 key={index}
                 onClick={() => handleOptionSelect(index)}
-                className={`w-full p-4 rounded-2xl text-left transition-all duration-200 border-2 ${
+                className={`w-full p-5 rounded-xl text-left transition-all duration-200 border-2 ${
                   selectedOption === index
-                    ? 'border-amber-500 bg-amber-50 shadow-md'
-                    : 'border-gray-200 hover:border-amber-300 hover:bg-gray-50'
+                    ? 'border-gold bg-gold/10 shadow-lg shadow-gold/5'
+                    : 'border-ink-slate hover:border-gold/30 hover:bg-ink-slate/50'
                 }`}
               >
-                <div className="flex items-center gap-4">
+                <div className="flex items-start gap-4">
                   <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-medium flex-shrink-0 transition-all duration-200 ${
                       selectedOption === index
-                        ? 'bg-amber-500 text-white'
-                        : 'bg-gray-100 text-gray-600'
+                        ? 'bg-gold text-ink-black'
+                        : 'bg-ink-slate text-cream/60'
                     }`}
                   >
                     {String.fromCharCode(65 + index)}
                   </div>
-                  <span className="text-gray-700">{option.text}</span>
+                  <span className={`text-base leading-relaxed ${
+                    selectedOption === index ? 'text-cream' : 'text-cream/70'
+                  }`}>{option.text}</span>
                 </div>
               </button>
             ))}
@@ -96,30 +147,38 @@ export default function TestPage() {
           <button
             onClick={handleNext}
             disabled={selectedOption === null}
-            className={`w-full mt-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-200 ${
-              selectedOption === null
-                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                : 'bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-600 hover:to-orange-600 transform hover:scale-105'
-            }`}
+            className={`w-full mt-8 relative overflow-hidden group`}
           >
-            {currentQuestion < questions.length - 1 ? '下一题 →' : '查看结果 🎉'}
+            <div className={`absolute inset-0 transition-opacity duration-300 ${
+              selectedOption === null ? 'opacity-0' : 'opacity-100'
+            } bg-gradient-to-r from-gold/10 via-gold/5 to-gold/10 group-hover:opacity-100`} />
+            <div
+              className={`relative py-4 rounded-xl font-medium text-lg transition-all duration-200 ${
+                selectedOption === null
+                  ? 'bg-ink-slate text-cream/30 cursor-not-allowed'
+                  : 'bg-ink-slate text-cream hover:bg-ink-slate/80 hover:text-gold cursor-pointer'
+              }`}
+            >
+              {currentQuestion < questions.length - 1 ? (
+                <span className="flex items-center justify-center gap-2">
+                  下一题
+                  <span className="transition-transform duration-200 group-hover:translate-x-1">→</span>
+                </span>
+              ) : (
+                <span className="flex items-center justify-center gap-2">
+                  查看结果
+                  <span>🎉</span>
+                </span>
+              )}
+            </div>
           </button>
         </div>
 
-        {/* Question dots */}
-        <div className="flex justify-center gap-2 mt-6 flex-wrap">
-          {questions.map((_, index) => (
-            <div
-              key={index}
-              className={`w-2 h-2 rounded-full transition-all duration-200 ${
-                index === currentQuestion
-                  ? 'bg-amber-500 w-4'
-                  : index < currentQuestion
-                  ? 'bg-amber-300'
-                  : 'bg-slate-600'
-              }`}
-            />
-          ))}
+        {/* Footer */}
+        <div className="text-center mt-6">
+          <p className="text-cream/30 text-xs">
+            第 {currentQuestion + 1} / {questions.length} 题
+          </p>
         </div>
       </div>
     </div>

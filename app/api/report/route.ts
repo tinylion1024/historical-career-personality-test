@@ -29,9 +29,13 @@ ${primary.weaknesses.map((w) => `• ${w}`).join('\n')}
 **职场建议：**
 ${primary.careerAdvice.map((a) => `• ${a}`).join('\n')}
 
+**组织定位：** ${primary.organizationRole}
+**风险提示：** ${primary.risk}
+${primary.aiValue ? `**AI时代价值：** ${primary.aiValue}` : ''}
+
 ---
 
-### 🌈 副人格：${secondary.name}
+### ⚔️ 副人格：${secondary.name}
 **${secondary.title}**
 
 ${secondary.description}
@@ -42,36 +46,48 @@ ${secondary.strengths.map((s) => `• ${s}`).join('\n')}
 **潜在短板：**
 ${secondary.weaknesses.map((w) => `• ${w}`).join('\n')}
 
+**组织定位：** ${secondary.organizationRole}
+
 ---
 
-### 🌑 阴影人格：${shadow.name}
+### 🎭 阴影人格：${shadow.name}
 **${shadow.title}**
 
 ${shadow.description}
 
-**核心优势：**
-${shadow.strengths.map((s) => `• ${s}`).join('\n')}
-
 **需要注意：**
 ${shadow.weaknesses.map((w) => `• ${w}`).join('\n')}
+
+**风险提示：** ${shadow.risk}
+${shadow.aiValue ? `**AI时代价值：** ${shadow.aiValue}` : ''}
 
 ---
 
 ## 💡 综合分析
 
-您同时具备 ${primary.name} 的战略思维和 ${secondary.name} 的人际技巧，这是非常难得的组合。建议在职场中充分发挥 ${primary.strengths[0]} 的优势，同时借鉴 ${secondary.strengths[0]} 来弥补不足。
+您同时具备 **${primary.name}** 和 **${secondary.name}** 的特质，这是非常难得的组合。
 
-对于阴影人格 ${shadow.name} 的特质，建议保持警觉，在适当场景下可以善加利用，但要注意避免其弱点对职业发展造成影响。
+**${primary.name}** 赋予您 ${primary.keywords.join('、')}的能力，让您在职场中能够 ${primary.organizationRole}。
+
+**${secondary.name}** 则帮助您 ${secondary.keywords.join('、')}，形成互补。
+
+对于阴影人格 **${shadow.name}** 的特质，建议保持警觉。在适当场景下可以善加利用 ${shadow.keywords.join('、')}的优势，但要注意避免 ${shadow.risk}。
 
 ## 🎯 发展建议
 
-1. **短期（1-3个月）**：专注于深化 ${primary.strengths[0]}，争取在团队中建立专业权威
-2. **中期（3-12个月）**：拓展 ${secondary.strengths[0]}，提升跨部门协作能力
-3. **长期（1-3年）**：整合三大人格特质，形成独特的职场竞争力
+1. **短期（1-3个月）**：专注于深化 ${primary.name} 的核心优势——${primary.strengths[0]}，在团队中建立专业权威
+2. **中期（3-12个月）**：整合 ${secondary.name} 的特质——${secondary.strengths[0]}，提升综合能力
+3. **长期（1-3年）**：学会在 ${shadow.name} 和正面特质之间找到平衡，形成独特的职场竞争力
+
+## 🔮 AI时代提示
+
+${primary.aiValue ? `您的 ${primary.name} 特质在AI时代非常有价值：${primary.aiValue}。` : ''}
+${secondary.aiValue ? `而 ${secondary.name} 的 ${secondary.aiValue} 能力，同样是AI时代的稀缺资产。` : ''}
+${shadow.aiValue ? (shadow.aiValue.startsWith('（负面）') ? `注意：${shadow.name} 的这种特质在AI时代需要正向引导。` : `此外，${shadow.aiValue} 也是值得关注的增值能力。`) : ''}
 
 ---
 
-*本报告由「中国历史人物·职场人格测试」生成*
+*本报告由「中国历史人物·职场24型人格测试」生成*
 `;
 }
 
